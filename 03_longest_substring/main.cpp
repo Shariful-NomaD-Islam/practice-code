@@ -5,7 +5,16 @@
 #include <iostream>
 #include <vector>
 
-std::string longest_substring(const std::string &s)
+template <typename T>
+concept StringLike = requires(T s, typename T::value_type c) {
+    { s.size() } -> std::convertible_to<std::size_t>;
+    { s.begin() } -> std::input_iterator;
+    { s.end() } -> std::input_iterator;
+    { s[c] } -> std::convertible_to<typename T::value_type>;
+    typename T::value_type;
+};
+
+std::string longest_substring_old(const std::string &s)
 {
     if (s.empty())
         return "";
@@ -32,6 +41,35 @@ std::string longest_substring(const std::string &s)
     }
 
     return s.substr(best_start, max_length);
+}
+
+template <StringLike S>
+std::basic_string<typename S::value_type> longest_substring(const S &s)
+{
+    using CharT = typename S::value_type;
+    if (s.empty())
+        return {};
+
+    std::unordered_map<CharT, std::size_t> char_index;
+    std::size_t start = 0, max_length = 0, best_start = 0;
+
+    for (std::size_t i = 0; i < s.size(); ++i)
+    {
+        if (char_index.contains(s[i]) && char_index[s[i]] >= start)
+        {
+            start = char_index[s[i]] + 1;
+        }
+        char_index[s[i]] = i;
+
+        std::size_t current_length = i - start + 1;
+        if (current_length > max_length)
+        {
+            max_length = current_length;
+            best_start = start;
+        }
+    }
+
+    return std::basic_string<CharT>(s.begin() + best_start, s.begin() + best_start + max_length);
 }
 
 int main()
