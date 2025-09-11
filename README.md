@@ -17,3 +17,9 @@ cargo run
 cd 03_longest_substring
 ./run.sh
 ```
+
+### 04_longerst-substring-without-repeating-charecter-rust
+```bash
+cd 04_longest_substring
+./run.sh
+```
