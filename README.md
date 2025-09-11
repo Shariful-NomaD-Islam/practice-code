@@ -7,13 +7,13 @@
 ### 01_ThreadsafeCache
 ```bash
 cd 01_threadsafe_cache_cpp
-./threadsafe-cache.sh
+./run.sh
 ```
 
 ### 02_ThreadsafeCache
 ```bash
 cd 02_threadsafe_cache_rust
-cargo run
+./run.sh
 ```
 
 ### 03_longerst-substring-without-repeating-charecter
