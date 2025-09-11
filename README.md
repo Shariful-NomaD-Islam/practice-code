@@ -1,5 +1,9 @@
 ## Practice codes
 
+### Pre-requisite
+* C++17
+* Rust 1.89
+
 ### 01_ThreadsafeCache
 ```bash
 cd 01_threadsafe_cache_cpp
