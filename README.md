@@ -11,3 +11,9 @@ cd 01_threadsafe_cache_cpp
 cd 02_threadsafe_cache_rust
 cargo run
 ```
+
+### 03_longerst-substring-without-repeating-charecter
+```bash
+cd 03_longest_substring
+./run.sh
+```
