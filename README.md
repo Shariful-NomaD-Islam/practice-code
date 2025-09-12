@@ -3,6 +3,8 @@
 ### Pre-requisite
 * C++17
 * Rust 1.89
+* Java 21
+* Gradle 8.13
 
 ### 01_ThreadsafeCache
 ```bash
@@ -27,3 +29,10 @@ cd 03_longest_substring
 cd 04_longest_substring
 ./run.sh
 ```
+
+### 05_rest_hibernate-java
+```bash
+cd 05_sample_REST
+gradle clean installDist && ./build/install/sample-rest/bin/sample-rest
+```
+

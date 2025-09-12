@@ -1,0 +1,10 @@
+logging:
+  file:
+    name: ${app.home:/tmp}/log/sample-rest.log
+  level:
+    root: warn
+    com.nomad: debug
+  logback:
+    rollingpolicy:
+      max-history: 365
+      max-file-size: 100MB

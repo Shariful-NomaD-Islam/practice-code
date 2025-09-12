@@ -69,5 +69,7 @@
     "C_Cpp.default.compilerPath": "/usr/bin/clang++",
     "C_Cpp.default.intelliSenseMode": "macos-clang-x64",
     "C_Cpp.errorSquiggles": "enabled",
-    "C_Cpp.intelliSenseEngine": "default"
+    "C_Cpp.intelliSenseEngine": "default",
+    "java.compile.nullAnalysis.mode": "automatic",
+    "java.configuration.updateBuildConfiguration": "interactive"
 }
