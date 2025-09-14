@@ -1,9 +1,9 @@
 package com.nomad.controller;
 
 import com.nomad.entity.Transaction;
+import com.nomad.model.Reply;
 import com.nomad.service.TransactionService;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -17,85 +17,113 @@ public class SampleRestController {
     private TransactionService transactionService;
 
     @GetMapping("/hello")
-    public String hello() {
-        return "Hello, World!";
+    public Reply<String> hello() {
+        return Reply.success("Hello, World!");
     }
 
     @GetMapping("/status")
-    public String status() {
-        return "Service is running!";
+    public Reply<String> status() {
+        return Reply.success("Service is running!");
     }
 
     // Get all transactions
     @GetMapping("/transactions")
-    public List<Transaction> getAllTransactions() {
-        return transactionService.getAllTransactions();
+    public Reply<List<Transaction>> getAllTransactions() {
+        List<Transaction> transactions = transactionService.getAllTransactions();
+        return Reply.success(transactions);
     }
 
     // Get transaction by ID
     @GetMapping("/transactions/{id}")
-    public ResponseEntity<Transaction> getTransactionById(@PathVariable Long id) {
+    public Reply<Transaction> getTransactionById(@PathVariable Long id) {
         Optional<Transaction> transaction = transactionService.getTransactionById(id);
-        return transaction.map(ResponseEntity::ok).orElse(ResponseEntity.notFound().build());
+        return transaction.map(Reply::success).orElse(Reply.notFound());
     }
 
     // Get transactions by customer ID
     @GetMapping("/transactions/customer/{customerId}")
-    public List<Transaction> getTransactionsByCustomerId(@PathVariable Integer customerId) {
-        return transactionService.getTransactionsByCustomerId(customerId);
+    public Reply<List<Transaction>> getTransactionsByCustomerId(@PathVariable Integer customerId) {
+        List<Transaction> transactions = transactionService.getTransactionsByCustomerId(customerId);
+        return Reply.success(transactions);
     }
 
     // Get valid transactions only
     @GetMapping("/transactions/valid")
-    public List<Transaction> getValidTransactions() {
-        return transactionService.getValidTransactions();
+    public Reply<List<Transaction>> getValidTransactions() {
+        List<Transaction> transactions = transactionService.getValidTransactions();
+        return Reply.success(transactions);
     }
 
     // Search transactions by customer name
     @GetMapping("/transactions/search")
-    public List<Transaction> searchTransactionsByCustomerName(@RequestParam String customerName) {
-        return transactionService.searchByCustomerName(customerName);
+    public Reply<List<Transaction>> searchTransactionsByCustomerName(@RequestParam String customerName) {
+        if (customerName == null || customerName.trim().isEmpty()) {
+            return Reply.badRequest("Customer name parameter is required");
+        }
+        List<Transaction> transactions = transactionService.searchByCustomerName(customerName);
+        return Reply.success(transactions);
     }
 
     // Get transactions by amount range
     @GetMapping("/transactions/amount-range")
-    public List<Transaction> getTransactionsByAmountRange(
+    public Reply<List<Transaction>> getTransactionsByAmountRange(
             @RequestParam Integer minAmount,
             @RequestParam Integer maxAmount) {
-        return transactionService.getTransactionsByAmountRange(minAmount, maxAmount);
+        if (minAmount < 0 || maxAmount < 0 || minAmount > maxAmount) {
+            return Reply.badRequest("Invalid amount range: minAmount and maxAmount must be positive and minAmount <= maxAmount");
+        }
+        List<Transaction> transactions = transactionService.getTransactionsByAmountRange(minAmount, maxAmount);
+        return Reply.success(transactions);
     }
 
     // Create new transaction
     @PostMapping("/transactions")
-    public Transaction createTransaction(@RequestBody Transaction transaction) {
-        return transactionService.createTransaction(transaction);
+    public Reply<Transaction> createTransaction(@RequestBody Transaction transaction) {
+        try {
+            Transaction createdTransaction = transactionService.createTransaction(transaction);
+            return Reply.success(createdTransaction);
+        } catch (Exception e) {
+            return Reply.serverError("Failed to create transaction: " + e.getMessage());
+        }
     }
 
     // Update transaction
     @PutMapping("/transactions/{id}")
-    public ResponseEntity<Transaction> updateTransaction(@PathVariable Long id, @RequestBody Transaction transaction) {
+    public Reply<Transaction> updateTransaction(@PathVariable Long id, @RequestBody Transaction transaction) {
         try {
             Transaction updatedTransaction = transactionService.updateTransaction(id, transaction);
-            return ResponseEntity.ok(updatedTransaction);
+            return Reply.success(updatedTransaction);
         } catch (RuntimeException e) {
-            return ResponseEntity.notFound().build();
+            return Reply.notFound();
+        } catch (Exception e) {
+            return Reply.serverError("Failed to update transaction: " + e.getMessage());
         }
     }
 
     // Delete transaction
     @DeleteMapping("/transactions/{id}")
-    public ResponseEntity<Void> deleteTransaction(@PathVariable Long id) {
-        Optional<Transaction> transaction = transactionService.getTransactionById(id);
-        if (transaction.isPresent()) {
-            transactionService.deleteTransaction(id);
-            return ResponseEntity.ok().build();
+    public Reply<Void> deleteTransaction(@PathVariable Long id) {
+        try {
+            Optional<Transaction> transaction = transactionService.getTransactionById(id);
+            if (transaction.isPresent()) {
+                transactionService.deleteTransaction(id);
+                return new Reply<>(0, "Transaction deleted successfully", null);
+            } else {
+                return Reply.notFound();
+            }
+        } catch (Exception e) {
+            return Reply.serverError("Failed to delete transaction: " + e.getMessage());
         }
-        return ResponseEntity.notFound().build();
     }
 
     // Get total amount by customer
     @GetMapping("/transactions/customer/{customerId}/total")
-    public Integer getTotalAmountByCustomer(@PathVariable Integer customerId) {
-        return transactionService.getTotalAmountByCustomer(customerId);
+    public Reply<Integer> getTotalAmountByCustomer(@PathVariable Integer customerId) {
+        try {
+            Integer total = transactionService.getTotalAmountByCustomer(customerId);
+            return Reply.success(total);
+        } catch (Exception e) {
+            return Reply.serverError("Failed to calculate total amount: " + e.getMessage());
+        }
     }
 }
