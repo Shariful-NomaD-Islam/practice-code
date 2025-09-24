@@ -4,15 +4,68 @@
 #include <vector>
 #include <array>
 #include <filesystem>
-#include <format>
 #include <random>
 #include <algorithm>
 #include <codecvt>
 #include <locale>
+#include <sstream>
+#include <iomanip>
 #include <openssl/evp.h>
 #include <openssl/aes.h>
 #include <openssl/rand.h>
 #include <openssl/sha.h>
+
+// Compatibility layer for different C++ standards
+#if __cplusplus >= 202302L || (defined(__GNUC__) && __GNUC__ >= 12) || (defined(__clang__) && __clang_major__ >= 14)
+    #include <format>
+    #define HAS_STD_FORMAT 1
+#else
+    #define HAS_STD_FORMAT 0
+#endif
+
+// Compatibility macros and functions
+#if !HAS_STD_FORMAT
+    // Simple format replacement for basic string formatting
+    template<typename T>
+    std::string format_impl(const std::string& fmt, T&& value) {
+        size_t pos = fmt.find("{}");
+        if (pos != std::string::npos) {
+            std::ostringstream oss;
+            oss << fmt.substr(0, pos) << value << fmt.substr(pos + 2);
+            return oss.str();
+        }
+        return fmt;
+    }
+    
+    template<typename T, typename... Args>
+    std::string format_impl(const std::string& fmt, T&& first, Args&&... args) {
+        size_t pos = fmt.find("{}");
+        if (pos != std::string::npos) {
+            std::ostringstream oss;
+            oss << fmt.substr(0, pos) << first;
+            std::string remaining = fmt.substr(pos + 2);
+            return oss.str() + format_impl(remaining, std::forward<Args>(args)...);
+        }
+        return fmt;
+    }
+    
+    #define FORMAT(fmt, ...) format_impl(fmt, __VA_ARGS__)
+#else
+    #define FORMAT(fmt, ...) std::format(fmt, __VA_ARGS__)
+#endif
+
+// String ends_with compatibility for C++17/20
+#if __cplusplus < 202002L
+    namespace string_utils {
+        bool ends_with(const std::string& str, const std::string& suffix) {
+            if (suffix.length() > str.length()) return false;
+            return str.compare(str.length() - suffix.length(), suffix.length(), suffix) == 0;
+        }
+    }
+    #define ENDS_WITH(str, suffix) string_utils::ends_with(str, suffix)
+#else
+    #define ENDS_WITH(str, suffix) str.ends_with(suffix)
+#endif
 
 namespace fs = std::filesystem;
 
@@ -26,7 +79,7 @@ public:
     bool encodeFile(const std::string& filePath, const std::string& password) {
         try {
             if (!fs::exists(filePath)) {
-                std::cerr << std::format("Error: File '{}' not found!\n", filePath);
+                std::cerr << FORMAT("Error: File '{}' not found!\n", filePath);
                 return false;
             }
             
@@ -37,9 +90,9 @@ public:
                 return false;
             }
             
-            std::cout << std::format("File: {}\n", fs::path(filePath).filename().string());
-            std::cout << std::format("File type: {}\n", getFileTypeDescription(filePath));
-            std::cout << std::format("Original size: {} bytes\n", fileData.size());
+            std::cout << FORMAT("File: {}\n", fs::path(filePath).filename().string());
+            std::cout << FORMAT("File type: {}\n", getFileTypeDescription(filePath));
+            std::cout << FORMAT("Original size: {} bytes\n", fileData.size());
             
             // Generate random salt and IV
             std::array<unsigned char, 16> salt;
@@ -81,17 +134,17 @@ public:
             
             // Delete original file
             if (!fs::remove(filePath)) {
-                std::cerr << std::format("Warning: Could not delete original file '{}'\n", filePath);
+                std::cerr << FORMAT("Warning: Could not delete original file '{}'\n", filePath);
             }
             
-            std::cout << std::format("✓ File encoded successfully: {}\n", encodedPath);
-            std::cout << std::format("✓ Original file '{}' deleted\n", filePath);
-            std::cout << std::format("Encrypted size: {} bytes\n", encryptedData.size());
+            std::cout << FORMAT("✓ File encoded successfully: {}\n", encodedPath);
+            std::cout << FORMAT("✓ Original file '{}' deleted\n", filePath);
+            std::cout << FORMAT("Encrypted size: {} bytes\n", encryptedData.size());
             
             return true;
             
         } catch (const std::exception& e) {
-            std::cerr << std::format("Error during encoding: {}\n", e.what());
+            std::cerr << FORMAT("Error during encoding: {}\n", e.what());
             return false;
         }
     }
@@ -99,7 +152,7 @@ public:
     bool decodeFile(const std::string& encodedPath, const std::string& password) {
         try {
             if (!fs::exists(encodedPath)) {
-                std::cerr << std::format("Error: Encoded file '{}' not found!\n", encodedPath);
+                std::cerr << FORMAT("Error: Encoded file '{}' not found!\n", encodedPath);
                 return false;
             }
             
@@ -111,7 +164,7 @@ public:
                 return false;
             }
             
-            std::cout << std::format("Encrypted data size: {} bytes\n", encryptedData.size());
+            std::cout << FORMAT("Encrypted data size: {} bytes\n", encryptedData.size());
             
             // Derive key from password
             std::array<unsigned char, 32> key;
@@ -136,24 +189,24 @@ public:
             
             // Determine original filename by removing ".encoded" extension
             std::string originalFilename = encodedPath;
-            if (originalFilename.ends_with(".encoded")) {
+            if (ENDS_WITH(originalFilename, ".encoded")) {
                 originalFilename = originalFilename.substr(0, originalFilename.length() - 8);
             }
             
             // Write decoded binary data to original file
             if (!writeBinaryFile(originalFilename, decryptedData)) {
-                std::cerr << std::format("Error: Could not write decoded file '{}'\n", originalFilename);
+                std::cerr << FORMAT("Error: Could not write decoded file '{}'\n", originalFilename);
                 return false;
             }
             
-            std::cout << std::format("Decoded size: {} bytes\n", decryptedData.size());
-            std::cout << std::format("File type: {}\n", getFileTypeDescription(originalFilename));
-            std::cout << std::format("✓ File decoded and saved as: {}\n", originalFilename);
+            std::cout << FORMAT("Decoded size: {} bytes\n", decryptedData.size());
+            std::cout << FORMAT("File type: {}\n", getFileTypeDescription(originalFilename));
+            std::cout << FORMAT("✓ File decoded and saved as: {}\n", originalFilename);
             
             return true;
             
         } catch (const std::exception& e) {
-            std::cerr << std::format("Error during decoding: {}\n", e.what());
+            std::cerr << FORMAT("Error during decoding: {}\n", e.what());
             return false;
         }
     }
@@ -230,7 +283,7 @@ private:
                          const std::vector<unsigned char>& encryptedData) {
         std::ofstream file(filePath, std::ios::binary);
         if (!file.is_open()) {
-            std::cerr << std::format("Error: Could not create encoded file '{}'\n", filePath);
+            std::cerr << FORMAT("Error: Could not create encoded file '{}'\n", filePath);
             return false;
         }
         
@@ -260,7 +313,7 @@ private:
                         std::vector<unsigned char>& encryptedData) {
         std::ifstream file(filePath, std::ios::binary);
         if (!file.is_open()) {
-            std::cerr << std::format("Error: Could not open encoded file '{}'\n", filePath);
+            std::cerr << FORMAT("Error: Could not open encoded file '{}'\n", filePath);
             return false;
         }
         
@@ -361,15 +414,15 @@ private:
 };
 
 void printUsage(const std::string& programName) {
-    std::cout << std::format("Usage: {} <command> <file>\n\n", programName);
+    std::cout << FORMAT("Usage: {} <command> <file>\n\n", programName);
     std::cout << "Commands:\n";
     std::cout << "  encode <file>         - Encode any file type and delete original\n";
     std::cout << "  decode <encoded_file> - Decode file and restore original\n\n";
     std::cout << "Examples:\n";
-    std::cout << std::format("  {} encode document.pdf\n", programName);
-    std::cout << std::format("  {} encode executable_file\n", programName);
-    std::cout << std::format("  {} encode image.jpg\n", programName);
-    std::cout << std::format("  {} decode document.pdf.encoded\n", programName);
+    std::cout << FORMAT("  {} encode document.pdf\n", programName);
+    std::cout << FORMAT("  {} encode executable_file\n", programName);
+    std::cout << FORMAT("  {} encode image.jpg\n", programName);
+    std::cout << FORMAT("  {} decode document.pdf.encoded\n", programName);
     std::cout << "\nSupported File Types:\n";
     std::cout << "  • Text files (.txt, .cpp, .py, .js, etc.)\n";
     std::cout << "  • Binary executables and applications\n";
@@ -415,7 +468,7 @@ int main(int argc, char* argv[]) {
                 return 0;
             }
         } else {
-            std::cerr << std::format("Error: Unknown command '{}'\n", command);
+            std::cerr << FORMAT("Error: Unknown command '{}'\n", command);
             printUsage(argv[0]);
             return 1;
         }
@@ -423,7 +476,7 @@ int main(int argc, char* argv[]) {
         return 1;
         
     } catch (const std::exception& e) {
-        std::cerr << std::format("Fatal error: {}\n", e.what());
+        std::cerr << FORMAT("Fatal error: {}\n", e.what());
         return 1;
     }
 }

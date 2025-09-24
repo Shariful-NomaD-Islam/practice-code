@@ -1,9 +1,34 @@
 # Makefile for C++23 File Encoder/Decoder
 
-# Compiler settings
+# Compiler settings with version detection
 CXX = g++
-CXXFLAGS = -std=c++23 -Wall -Wextra -Wpedantic -O2 -I./include
-OPENSSL_LIBPATH = -L/opt/homebrew/lib -L/usr/local/lib
+
+# Detect compiler version and set appropriate C++ standard
+GCC_VERSION := $(shell $(CXX) -dumpversion | cut -f1 -d.)
+CLANG_VERSION := $(shell $(CXX) --version 2>/dev/null | grep -o 'clang version [0-9]*' | cut -d' ' -f3)
+
+ifeq ($(shell $(CXX) --version | grep -c "clang"), 1)
+    # Clang compiler
+    ifneq ($(shell test $(CLANG_VERSION) -ge 14; echo $$?), 0)
+        CPPSTD = -std=c++20
+        $(info Using C++20 for Clang $(CLANG_VERSION))
+    else
+        CPPSTD = -std=c++23
+        $(info Using C++23 for Clang $(CLANG_VERSION))
+    endif
+else
+    # GCC compiler
+    ifneq ($(shell test $(GCC_VERSION) -ge 12; echo $$?), 0)
+        CPPSTD = -std=c++20
+        $(info Using C++20 for GCC $(GCC_VERSION))
+    else
+        CPPSTD = -std=c++23
+        $(info Using C++23 for GCC $(GCC_VERSION))
+    endif
+endif
+
+CXXFLAGS = $(CPPSTD) -Wall -Wextra -Wpedantic -O2 -I./include
+OPENSSL_LIBPATH = -L/opt/homebrew/lib -L/usr/local/lib -L/usr/lib64 -L/usr/lib/x86_64-linux-gnu
 OPENSSL_LIBS = -lssl -lcrypto
 
 # Target executable
