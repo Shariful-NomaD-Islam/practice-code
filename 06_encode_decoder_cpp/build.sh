@@ -38,14 +38,14 @@ install_dependencies() {
 
 # Build using Makefile
 build_with_make() {
-    echo "Building with Makefile..."
+    echo "Building with Makefile (using local OpenSSL headers)..."
     make clean
     make
 }
 
 # Build using CMake
 build_with_cmake() {
-    echo "Building with CMake..."
+    echo "Building with CMake (using local OpenSSL headers)..."
     mkdir -p build
     cd build
     cmake ..

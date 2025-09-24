@@ -5,14 +5,14 @@ project(FileEncoderDecoder)
 set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-# Find OpenSSL
-find_package(OpenSSL REQUIRED)
-
 # Add executable
 add_executable(encoder_decoder main.cpp)
 
-# Link OpenSSL libraries
-target_link_libraries(encoder_decoder OpenSSL::SSL OpenSSL::Crypto)
+# Add local include directory
+target_include_directories(encoder_decoder PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/include)
+
+# Link OpenSSL libraries (using system libraries)
+target_link_libraries(encoder_decoder ssl crypto)
 
 # Set compiler flags for better optimization and warnings
 target_compile_options(encoder_decoder PRIVATE
@@ -20,7 +20,6 @@ target_compile_options(encoder_decoder PRIVATE
     -O2
 )
 
-# Print OpenSSL information
-message(STATUS "OpenSSL version: ${OPENSSL_VERSION}")
-message(STATUS "OpenSSL include dir: ${OPENSSL_INCLUDE_DIR}")
-message(STATUS "OpenSSL libraries: ${OPENSSL_LIBRARIES}")
+# Print build information
+message(STATUS "Using local OpenSSL headers from: ${CMAKE_CURRENT_SOURCE_DIR}/include")
+message(STATUS "Linking against system OpenSSL libraries")

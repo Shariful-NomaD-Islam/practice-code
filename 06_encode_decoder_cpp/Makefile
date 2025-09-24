@@ -2,9 +2,9 @@
 
 # Compiler settings
 CXX = g++
-CXXFLAGS = -std=c++23 -Wall -Wextra -Wpedantic -O2
-OPENSSL_CFLAGS = $(shell pkg-config --cflags openssl)
-OPENSSL_LIBS = $(shell pkg-config --libs openssl)
+CXXFLAGS = -std=c++23 -Wall -Wextra -Wpedantic -O2 -I./include
+OPENSSL_LIBPATH = -L/opt/homebrew/lib -L/usr/local/lib
+OPENSSL_LIBS = -lssl -lcrypto
 
 # Target executable
 TARGET = encoder_decoder
@@ -15,7 +15,7 @@ all: $(TARGET)
 
 # Build the encoder/decoder
 $(TARGET): $(SOURCE)
-	$(CXX) $(CXXFLAGS) $(OPENSSL_CFLAGS) -o $(TARGET) $(SOURCE) $(OPENSSL_LIBS)
+	$(CXX) $(CXXFLAGS) $(OPENSSL_LIBPATH) -o $(TARGET) $(SOURCE) $(OPENSSL_LIBS)
 
 # Clean build files
 clean:
