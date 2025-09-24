@@ -63,7 +63,11 @@
         "tuple": "cpp",
         "typeinfo": "cpp",
         "variant": "cpp",
-        "vector": "cpp"
+        "vector": "cpp",
+        "filesystem": "cpp",
+        "__verbose_abort": "cpp",
+        "random": "cpp",
+        "codecvt": "cpp"
     },
     "C_Cpp.default.cppStandard": "c++23",
     "C_Cpp.default.compilerPath": "/usr/bin/clang++",
@@ -71,5 +75,6 @@
     "C_Cpp.errorSquiggles": "enabled",
     "C_Cpp.intelliSenseEngine": "default",
     "java.compile.nullAnalysis.mode": "automatic",
-    "java.configuration.updateBuildConfiguration": "interactive"
+    "java.configuration.updateBuildConfiguration": "interactive",
+    "cmake.sourceDirectory": "/Volumes/data/work/preactice-code/06_encode_decoder_cpp"
 }
