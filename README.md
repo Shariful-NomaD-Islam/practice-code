@@ -36,3 +36,11 @@ cd 05_sample_REST
 gradle clean installDist && ./build/install/sample-rest/bin/sample-rest
 ```
 
+### 06_encoder-decoder-cpp
+```bash
+cd 06_encode_decoder_cpp
+./build.sh
+./encoder_decoder encode sample.txt
+./encoder_decoder decode sample.txt.encoded
+```
+
