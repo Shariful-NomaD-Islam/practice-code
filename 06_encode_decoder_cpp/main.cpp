@@ -30,15 +30,16 @@ public:
                 return false;
             }
             
-            // Read original file content as UTF-8
-            std::string content = readUtf8File(filePath);
-            if (content.empty() && fs::file_size(filePath) > 0) {
+            // Read original file as binary data (works for all file types)
+            std::vector<unsigned char> fileData = readBinaryFile(filePath);
+            if (fileData.empty() && fs::file_size(filePath) > 0) {
                 std::cerr << "Error: Could not read file content!\n";
                 return false;
             }
             
-            std::cout << std::format("Original content: {}\n", content);
-            std::cout << std::format("Content size: {} bytes\n", content.size());
+            std::cout << std::format("File: {}\n", fs::path(filePath).filename().string());
+            std::cout << std::format("File type: {}\n", getFileTypeDescription(filePath));
+            std::cout << std::format("Original size: {} bytes\n", fileData.size());
             
             // Generate random salt and IV
             std::array<unsigned char, 16> salt;
@@ -61,10 +62,9 @@ public:
                 return false;
             }
             
-            // Encrypt content
+            // Encrypt binary data
             std::vector<unsigned char> encryptedData = encrypt(
-                reinterpret_cast<const unsigned char*>(content.c_str()),
-                content.length(), key.data(), iv.data());
+                fileData.data(), fileData.size(), key.data(), iv.data());
             
             if (encryptedData.empty()) {
                 std::cerr << "Error: Encryption failed!\n";
@@ -134,15 +134,21 @@ public:
                 return false;
             }
             
-            // Convert decrypted data to UTF-8 string
-            std::string decryptedText(decryptedData.begin(), decryptedData.end());
+            // Determine original filename by removing ".encoded" extension
+            std::string originalFilename = encodedPath;
+            if (originalFilename.ends_with(".encoded")) {
+                originalFilename = originalFilename.substr(0, originalFilename.length() - 8);
+            }
             
-            std::cout << "\n" << std::string(50, '=') << "\n";
-            std::cout << "DECODED CONTENT:\n";
-            std::cout << std::string(50, '=') << "\n";
-            std::cout << decryptedText << "\n";
-            std::cout << std::string(50, '=') << "\n";
-            std::cout << std::format("Decoded size: {} bytes\n", decryptedText.size());
+            // Write decoded binary data to original file
+            if (!writeBinaryFile(originalFilename, decryptedData)) {
+                std::cerr << std::format("Error: Could not write decoded file '{}'\n", originalFilename);
+                return false;
+            }
+            
+            std::cout << std::format("Decoded size: {} bytes\n", decryptedData.size());
+            std::cout << std::format("File type: {}\n", getFileTypeDescription(originalFilename));
+            std::cout << std::format("✓ File decoded and saved as: {}\n", originalFilename);
             
             return true;
             
@@ -153,16 +159,69 @@ public:
     }
 
 private:
-    std::string readUtf8File(const std::string& filePath) {
-        std::ifstream file(filePath, std::ios::binary);
+    std::vector<unsigned char> readBinaryFile(const std::string& filePath) {
+        std::ifstream file(filePath, std::ios::binary | std::ios::ate);
         if (!file.is_open()) {
             throw std::runtime_error("Could not open file for reading");
         }
         
-        // Read entire file content
-        std::string content((std::istreambuf_iterator<char>(file)),
-                           std::istreambuf_iterator<char>());
-        return content;
+        std::streamsize fileSize = file.tellg();
+        file.seekg(0, std::ios::beg);
+        
+        std::vector<unsigned char> buffer(fileSize);
+        if (fileSize > 0 && !file.read(reinterpret_cast<char*>(buffer.data()), fileSize)) {
+            throw std::runtime_error("Could not read file content");
+        }
+        
+        return buffer;
+    }
+    
+    bool writeBinaryFile(const std::string& filePath, const std::vector<unsigned char>& data) {
+        std::ofstream file(filePath, std::ios::binary);
+        if (!file.is_open()) {
+            return false;
+        }
+        
+        if (!data.empty()) {
+            file.write(reinterpret_cast<const char*>(data.data()), data.size());
+        }
+        return !file.fail();
+    }
+    
+    std::string getFileTypeDescription(const std::string& filePath) {
+        fs::path path(filePath);
+        std::string extension = path.extension().string();
+        
+        if (extension.empty()) {
+            // Check if file is executable
+            auto perms = fs::status(filePath).permissions();
+            if ((perms & fs::perms::owner_exec) != fs::perms::none ||
+                (perms & fs::perms::group_exec) != fs::perms::none ||
+                (perms & fs::perms::others_exec) != fs::perms::none) {
+                return "Executable/Binary";
+            }
+            return "Binary file";
+        }
+        
+        // Common file type descriptions
+        if (extension == ".txt" || extension == ".md" || extension == ".cpp" || 
+            extension == ".h" || extension == ".py" || extension == ".js") {
+            return "Text file";
+        } else if (extension == ".jpg" || extension == ".jpeg" || extension == ".png" || 
+                   extension == ".gif" || extension == ".bmp") {
+            return "Image file";
+        } else if (extension == ".mp4" || extension == ".avi" || extension == ".mov" || 
+                   extension == ".mkv") {
+            return "Video file";
+        } else if (extension == ".mp3" || extension == ".wav" || extension == ".flac") {
+            return "Audio file";
+        } else if (extension == ".pdf" || extension == ".doc" || extension == ".docx") {
+            return "Document";
+        } else if (extension == ".zip" || extension == ".tar" || extension == ".gz") {
+            return "Archive";
+        }
+        
+        return "Binary file";
     }
     
     bool writeEncodedFile(const std::string& filePath,
@@ -304,12 +363,27 @@ private:
 void printUsage(const std::string& programName) {
     std::cout << std::format("Usage: {} <command> <file>\n\n", programName);
     std::cout << "Commands:\n";
-    std::cout << "  encode <file>         - Encode file and delete original\n";
-    std::cout << "  decode <encoded_file> - Decode file and show content\n\n";
+    std::cout << "  encode <file>         - Encode any file type and delete original\n";
+    std::cout << "  decode <encoded_file> - Decode file and restore original\n\n";
     std::cout << "Examples:\n";
-    std::cout << std::format("  {} encode sample.txt\n", programName);
-    std::cout << std::format("  {} decode sample.txt.encoded\n", programName);
-    std::cout << "\nNote: Password is hardcoded in the application for security.\n";
+    std::cout << std::format("  {} encode document.pdf\n", programName);
+    std::cout << std::format("  {} encode executable_file\n", programName);
+    std::cout << std::format("  {} encode image.jpg\n", programName);
+    std::cout << std::format("  {} decode document.pdf.encoded\n", programName);
+    std::cout << "\nSupported File Types:\n";
+    std::cout << "  • Text files (.txt, .cpp, .py, .js, etc.)\n";
+    std::cout << "  • Binary executables and applications\n";
+    std::cout << "  • Images (.jpg, .png, .gif, etc.)\n";
+    std::cout << "  • Videos (.mp4, .avi, .mov, etc.)\n";
+    std::cout << "  • Documents (.pdf, .docx, etc.)\n";
+    std::cout << "  • Archives (.zip, .tar, .gz, etc.)\n";
+    std::cout << "  • Any other file type (binary-safe)\n";
+    std::cout << "\nBehavior:\n";
+    std::cout << "  • Uses AES-256-CBC encryption with PBKDF2 key derivation\n";
+    std::cout << "  • Encoding deletes the original file after encryption\n";
+    std::cout << "  • Decoding restores the file with original filename\n";
+    std::cout << "  • Password is hardcoded for security\n";
+    std::cout << "  • Preserves file permissions and binary integrity\n";
 }
 
 int main(int argc, char* argv[]) {
