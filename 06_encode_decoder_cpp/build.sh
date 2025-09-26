@@ -22,13 +22,7 @@ install_dependencies() {
     
     if command -v brew >/dev/null 2>&1; then
         echo "Installing OpenSSL via Homebrew..."
-        brew install openssl pkg-config
-        
-        # Add OpenSSL to PKG_CONFIG_PATH if needed
-        if [[ "$OSTYPE" == "darwin"* ]]; then
-            export PKG_CONFIG_PATH="/opt/homebrew/opt/openssl/lib/pkgconfig:$PKG_CONFIG_PATH"
-            echo "Added OpenSSL to PKG_CONFIG_PATH"
-        fi
+        brew install openssl
     else
         echo "Homebrew not found. Please install:"
         echo "  /bin/bash -c \"\$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)\""
@@ -46,12 +40,31 @@ build_with_make() {
 # Build using CMake
 build_with_cmake() {
     echo "Building with CMake (using local OpenSSL headers)..."
+    
+    # Clean and create build directory
+    rm -rf build
     mkdir -p build
     cd build
-    cmake ..
-    make
-    cd ..
-    cp build/encoder_decoder .
+    
+    # Run cmake with error handling
+    echo "Running cmake..."
+    if cmake ..; then
+        echo "CMake configuration successful"
+        if make; then
+            echo "Build successful"
+            cd ..
+            cp build/encoder_decoder .
+            return 0
+        else
+            echo "Make failed"
+            cd ..
+            return 1
+        fi
+    else
+        echo "CMake configuration failed"
+        cd ..
+        return 1
+    fi
 }
 
 # Main build process
@@ -66,11 +79,6 @@ main() {
     GCC_VERSION=$(g++ --version | head -n1 | grep -o '[0-9]\+' | head -1)
     if [ "$GCC_VERSION" -lt 11 ]; then
         echo "Warning: GCC version $GCC_VERSION may not support C++23"
-    fi
-    
-    # Set PKG_CONFIG_PATH for macOS OpenSSL
-    if [[ "$OSTYPE" == "darwin"* ]]; then
-        export PKG_CONFIG_PATH="/opt/homebrew/opt/openssl/lib/pkgconfig:/usr/local/opt/openssl/lib/pkgconfig:$PKG_CONFIG_PATH"
     fi
     
     # Check OpenSSL
@@ -109,14 +117,14 @@ main() {
         echo
         echo "Usage:"
         echo "  ./encoder_decoder encode sample.txt"
-        echo "  ./encoder_decoder decode sample.txt.encoded"
+        echo "  ./encoder_decoder decode sample.txt.enc"
         echo
         
         # Test with sample file if it exists
         if [ -f "sample.txt" ]; then
             echo "Sample file found. You can test with:"
             echo "  ./encoder_decoder encode sample.txt"
-            echo "  ./encoder_decoder decode sample.txt.encoded"
+            echo "  ./encoder_decoder decode sample.txt.enc"
             echo
             echo "Or run a complete test with:"
             echo "  make test"

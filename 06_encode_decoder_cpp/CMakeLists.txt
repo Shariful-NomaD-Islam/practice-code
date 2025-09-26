@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.20)
+cmake_minimum_required(VERSION 3.16)
 project(FileEncoderDecoder)
 
 # Detect compiler and set appropriate C++ standard
@@ -28,18 +28,45 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 # Add executable
 add_executable(encoder_decoder main.cpp)
 
-# Add local include directory
+# Add local include directory (for our static OpenSSL headers)
 target_include_directories(encoder_decoder PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/include)
 
-# Link OpenSSL libraries (using system libraries)
-target_link_libraries(encoder_decoder ssl crypto)
+# Find and link OpenSSL libraries
+if(APPLE)
+    # macOS Homebrew OpenSSL paths
+    set(OPENSSL_ROOT_DIR 
+        "/opt/homebrew/opt/openssl@3"
+        "/opt/homebrew/opt/openssl"
+        "/usr/local/opt/openssl@3"
+        "/usr/local/opt/openssl"
+    )
+    
+    find_library(OPENSSL_SSL_LIBRARY 
+        NAMES ssl libssl
+        PATHS ${OPENSSL_ROOT_DIR}
+        PATH_SUFFIXES lib
+        REQUIRED
+    )
+    
+    find_library(OPENSSL_CRYPTO_LIBRARY 
+        NAMES crypto libcrypto
+        PATHS ${OPENSSL_ROOT_DIR}
+        PATH_SUFFIXES lib
+        REQUIRED
+    )
+    
+    target_link_libraries(encoder_decoder ${OPENSSL_SSL_LIBRARY} ${OPENSSL_CRYPTO_LIBRARY})
+    message(STATUS "Found OpenSSL libraries:")
+    message(STATUS "  SSL: ${OPENSSL_SSL_LIBRARY}")
+    message(STATUS "  Crypto: ${OPENSSL_CRYPTO_LIBRARY}")
+else()
+    # Linux and other systems
+    find_package(OpenSSL REQUIRED)
+    target_link_libraries(encoder_decoder OpenSSL::SSL OpenSSL::Crypto)
+endif()
 
 # Set compiler flags for better optimization and warnings
 target_compile_options(encoder_decoder PRIVATE
     -Wall -Wextra -Wpedantic
     -O2
 )
-
-# Print build information
-message(STATUS "Using local OpenSSL headers from: ${CMAKE_CURRENT_SOURCE_DIR}/include")
-message(STATUS "Linking against system OpenSSL libraries")
