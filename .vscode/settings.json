@@ -68,7 +68,9 @@
         "__verbose_abort": "cpp",
         "fstream": "cpp",
         "codecvt": "cpp",
-        "random": "cpp"
+        "random": "cpp",
+        "iomanip": "cpp",
+        "numeric": "cpp"
     },
     "C_Cpp.default.cppStandard": "c++23",
     "C_Cpp.default.compilerPath": "/usr/bin/clang++",

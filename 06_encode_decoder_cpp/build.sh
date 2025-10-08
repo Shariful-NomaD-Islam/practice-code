@@ -42,7 +42,10 @@ build_with_cmake() {
     echo "Building with CMake (using local OpenSSL headers)..."
     
     # Clean and create build directory
-    rm -rf build
+    if [ -d "build" ]; then
+        echo "Removing existing build directory..."
+        rm -rf build
+    fi
     mkdir -p build
     cd build
     
